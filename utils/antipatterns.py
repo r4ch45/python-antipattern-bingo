@@ -1,17 +1,33 @@
 import os
 import random
+import pandas as pd
+import textwrap
+
+themes = [
+    "correctness",
+    "maintainability",
+    "performance",
+    "readability",
+    "security",
+]
+
+theme_colors = {
+    "None" : "grey",
+    "correctness": "thistle",
+    "maintainability": "plum",
+    "performance": "lightsteelblue",
+    "readability": "lightpink",
+    "security": "lightblue",
+}
 
 
-def get_antipatterns_per_theme(anti_pattern_src_path="../python-anti-patterns/src/"):
-    themes = [
-        "correctness",
-        "maintainability",
-        "performance",
-        "readability",
-        "security",
-    ]
+def customwrap(s, width=15):
+    return "<br>".join(textwrap.wrap(s, width=width))
 
-    patterns_per_theme = {}
+
+def get_antipatterns_df(anti_pattern_src_path="../python-anti-patterns/src/"):
+
+    df = pd.DataFrame()
 
     for theme in themes:
         patterns = []
@@ -22,17 +38,30 @@ def get_antipatterns_per_theme(anti_pattern_src_path="../python-anti-patterns/sr
                 if not name == "index.rst":
                     patterns.append(name)
 
-        patterns_per_theme[theme] = patterns
+        df_theme = pd.DataFrame({"pattern": patterns})
+        df_theme["theme"] = theme
 
-    return patterns_per_theme
+        df = df.append(df_theme)
+
+    return df
 
 
-def pick_random_antipatterns(patterns_per_theme, n=9):
+def get_antipattern_internet_path(pattern, theme):
+    return (
+        f"https://quantifiedcode.github.io/python-anti-patterns/{theme}/{pattern}.html"
+    )
 
-    vals = sum(patterns_per_theme.values(), [])
 
-    if len(vals) < n:
-        print("Sample larger than population so returning entire population")
-        return vals
-    else:
-        return random.sample(vals, k=n)
+def wrangle_antipatterns_df(df):
+    df["pattern"] = df["pattern"].str.replace(".rst", "", regex=False)
+
+    df["internet_path"] = df.apply(
+        lambda row: get_antipattern_internet_path(row["pattern"], row["theme"]), axis=1
+    )
+    df["readable_pattern"] = (
+        df["pattern"].str.replace("_", " ", regex=False).apply(lambda x: customwrap(x))
+    )
+
+    df["color"] = df["theme"].map(theme_colors)
+
+    return df
